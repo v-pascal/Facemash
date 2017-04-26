@@ -41,46 +41,40 @@ private:
     static bool started;
     List mList;
 
-    static bool contains(Sorted* sorted, T* choice) { // Return if sorted list contains both entries (defined in the choice)
-        bool choiceA = false, choiceB = false;
-
-        for (typename Sorted::iterator it = sorted->begin(); it != sorted->end(); ++it) {
-            for (typename List::iterator iter = (*it)->begin(); iter != (*it)->end(); ++iter) {
-                if (!choiceA) choiceA = *(*iter) == choice[0];
-                if (!choiceB) choiceB = *(*iter) == choice[1];
-                if (choiceA && choiceB)
-                    return true;
-            }
+    static List* last(Sorted* sorted, T data) { // Return list that contains data at last position
+        for (typename Sorted::iterator iter = sorted->begin(); iter != sorted->end(); ++iter) {
+            if ((*(*iter)->at((*iter)->size() - 1)) == data)
+                return (*iter);
         }
-        return false;
+        return NULL;
     }
-    static void sort(Sorted* &sorted, T* choice, bool first) { // Take in count new choice into sorted list
-        if (sorted == NULL) {
+    static List* first(Sorted* sorted, T data) { // Return list that contains data at first position
+        for (typename Sorted::iterator iter = sorted->begin(); iter != sorted->end(); ++iter) {
+            if ((*(*iter)->at(0)) == data)
+                return (*iter);
+        }
+        return NULL;
+    }
+    static void sort(Sorted* &sorted, T* choice, bool selection) { // Take in account new choice into sorted list
+        if (sorted == NULL)
             sorted = new Sorted();
 
-            sorted->push_back(new List());
-            sorted->at(0)->push_back(new int(choice[(first)? 0:1]));
-            sorted->at(0)->push_back(new int(choice[(first)? 1:0]));
-        } else if (!contains(sorted, choice)) { // Missing entries
-
-
-
-
-
-            sorted->at(0)->push_back(new int(choice[1]));
-
-
-
-
-
-
-        } else {
-
-
-
-
-
+        int idx = sorted->size();
+        if (idx > 0) {
+            List* tmp = last(sorted, choice[(selection)? 0:1]);
+            if (tmp != NULL) {
+                tmp->push_back(new int(choice[1]));
+                return;
+            }
+            tmp = first(sorted, choice[(selection)? 1:0]);
+            if (tmp != NULL) {
+                tmp->insert(tmp->begin(), new int(choice[1]));
+                return;
+            }
         }
+        sorted->push_back(new List());
+        sorted->at(idx)->push_back(new int(choice[(selection)? 0:1]));
+        sorted->at(idx)->push_back(new int(choice[(selection)? 1:0]));
     }
     int find(T data) const { // Return index position of data in the list (or NO_DATA if not found)
         for (int i = 0; i < mList.size(); ++i)
@@ -146,7 +140,7 @@ public:
     inline int size() const { return mList.size(); }
 
     //
-    T* next(Sorted* &sorted, T* choice, bool first) const { // Update sorted list and return next choice (if any)
+    T* next(Sorted* &sorted, T* choice, bool selection) const { // Update sorted list and return next choice (if any)
         started = true;
 
         if ((sorted == NULL) && (choice == NULL)) {
@@ -157,7 +151,7 @@ public:
             return res;
         }
         assert(choice != NULL);
-        sort(sorted, choice, first);
+        sort(sorted, choice, selection);
         delete choice;
 
         return merge(sorted);
@@ -218,8 +212,8 @@ int main() {
     // Start sorting
     int* choice = NULL;
     Facemash<int>::Sorted* list = NULL;
-    bool first = false;
-    while (choice = facemash->next(list, choice, first)) {
+    bool selection = false;
+    while (choice = facemash->next(list, choice, selection)) {
         char reply;
 
         cout << "-> CHOICE: " << numToStr<int>(choice[0]) << " ? " << numToStr<int>(choice[1]) << endl;
@@ -230,8 +224,8 @@ int main() {
 
         if (reply == 'q')
             break;
-        first = (reply == '>')? true:false;
-        cout << "* Your choice was: " << numToStr<int>(choice[0]) << ((reply)? " > ":" < ") << numToStr<int>(choice[1]) << endl;
+        selection = (reply == '>')? true:false;
+        cout << "* Your choice was: " << numToStr<int>(choice[0]) << ((selection)? " > ":" < ") << numToStr<int>(choice[1]) << endl;
     }
     tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
 
