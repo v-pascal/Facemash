@@ -38,7 +38,7 @@ public:
     typedef vector<List*> Sorted;
 
 private:
-    static bool started;
+    bool mStarted;
     List mList;
 
     static List* last(Sorted* sorted, T data) { // Return list that contains data at last position
@@ -107,14 +107,51 @@ private:
             return res;
         }
 
+        // Merge
+        typename Sorted::iterator toMerge = sorted->end();
+        for (typename Sorted::iterator it = sorted->begin(); it != sorted->end(); ++it) {
+            if (toMerge != sorted->end()) {
+                if ((*(*toMerge)->at(0) == *(*it)->at(0)) && (*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1))) {
+                    sorted->erase(((*toMerge)->size() > (*it)->size())? it:toMerge);
+                    break;
+                }
+            }
+            toMerge = it;
+        }
+
+        // Check sort done
+        if ((sorted->size() == 1) && (sorted->at(0)->size() == mList.size()))
+            return NULL;
+
+        // Find next choice
+        assert(sorted->size() > 1);
+
+        T* res = new T[2];
+        for (int i = 0; i < sorted->size() - 1; ++i) {
+
+            for (int j = 0; j < sorted->at(i)->size(); ++j) {
+                res[0] = *sorted->at(i)->at(j);
+                for (int k = 0; k < sorted->at(i + 1)->size(); ++k) {
+
+                    if (res[0] == *sorted->at(i + 1)->at(k)) {
+                        if (!j) {
+                            assert((j + 1) < sorted->at(i)->size());
+                            assert((k + 1) < sorted->at(i + 1)->size());
+
+                            res[0] = *sorted->at(i)->at(j + 1);
+                            res[1] = *sorted->at(i + 1)->at(k + 1);
+                        }
 
 
 
 
-
-
-
-        return NULL; // Sort done
+                        return res;
+                    }
+                }
+            }
+        }
+        assert(NULL);
+        return NULL;
     }
 
 public:
@@ -126,7 +163,7 @@ public:
     };
 
     inline AddResult add(T* e) {
-        if (started)
+        if (mStarted)
             return AR_ALREADY_STARTED;
 
         if (find(*e) != NO_DATA)
@@ -140,9 +177,14 @@ public:
     inline int size() const { return mList.size(); }
 
     //
-    T* next(Sorted* &sorted, T* choice, bool selection) const { // Update sorted list and return next choice (if any)
-        started = true;
+    T* next(Sorted* &sorted, T* choice, bool selection) { // Update sorted list and return next choice (if any)
+        if (!mStarted) {
+            
 
+
+
+            mStarted = true;
+        }
         if ((sorted == NULL) && (choice == NULL)) {
             T* res = new T[2];
 
@@ -159,9 +201,6 @@ public:
 };
 
 //////
-template<>
-bool Facemash<int>::started = false;
-
 void display(const Facemash<int>::List& list) {
     for (int i = 0; i < list.size(); ++i)
         cout << (*list[i]) << " ";
