@@ -42,7 +42,7 @@ private:
     List mList;
 
     static List* last(Sorted* sorted, T data) { // Return list that contains data at last position
-        for (typename Sorted::iterator iter = sorted->begin(); iter != sorted->end(); ++iter) {
+        for (typename Sorted::reverse_iterator iter = sorted->rbegin(); iter != sorted->rend(); ++iter) {
             if ((*(*iter)->at((*iter)->size() - 1)) == data)
                 return (*iter);
         }
@@ -55,27 +55,21 @@ private:
         }
         return NULL;
     }
-    static void sort(Sorted* &sorted, T* choice, bool selection) { // Take in account new choice into sorted list
-        if (sorted == NULL)
-            sorted = new Sorted();
+    static bool choosed(Sorted* sorted, int idx, T* choice) { // Return if choice already done
+        bool res = false;
+        for (int i = idx; i < sorted->size(); ++i) {
+            for (int j = 0; j < (sorted->at(i)->size() - 1); ++j) {
+                if (((choice[0] == *sorted->at(i)->at(j)) || (choice[0] == *sorted->at(i)->at(j + 1))) &&
+                    ((choice[1] == *sorted->at(i)->at(j)) || (choice[1] == *sorted->at(i)->at(j + 1)))) {
 
-        int idx = sorted->size();
-        if (idx > 0) {
-            List* tmp = last(sorted, choice[(selection)? 0:1]);
-            if (tmp != NULL) { // ... A B + B>C -> ... A B C
-                tmp->push_back(new int(choice[(selection)? 1:0]));
-                return;
-            }
-            tmp = first(sorted, choice[(selection)? 1:0]);
-            if (tmp != NULL) { // B A ... + C>B -> C B A ...
-                tmp->insert(tmp->begin(), new int(choice[(selection)? 0:1]));
-                return;
+                    res = true;
+                    break;
+                }
             }
         }
-        sorted->push_back(new List());
-        sorted->at(idx)->push_back(new int(choice[(selection)? 0:1]));
-        sorted->at(idx)->push_back(new int(choice[(selection)? 1:0]));
+        return res;
     }
+
     int find(T data) const { // Return index position of data in the list (or NO_DATA if not found)
         for (int i = 0; i < mList.size(); ++i)
             if (*mList[i] == data)
@@ -95,24 +89,53 @@ private:
         }
         return (maxIdx == (mList.size() - 1))? NO_DATA:maxIdx;
     }
+    bool done(Sorted* sorted) const { // Return sort completed flag
+        if (sorted->at(0)->size() == mList.size()) {
+            while (sorted->size() > 1)
+                sorted->erase(sorted->end() - 1);
 
+            return true;
+        }
+        if (sorted->at(sorted->size() - 1)->size() == mList.size()) {
+            while (sorted->size() > 1)
+                sorted->erase(sorted->begin());
+
+            return true;
+        }
+        return false;
+    }
+
+    static void sort(Sorted* &sorted, T* choice, bool selection) { // Take in account new choice into sorted list
+        if (sorted == NULL)
+            sorted = new Sorted();
+
+        int idx = sorted->size();
+        if (idx > 0) {
+            List* tmp = last(sorted, choice[(selection)? 0:1]);
+            if (tmp != NULL) { // ... B + B>C -> ... B C
+                tmp->push_back(new int(choice[(selection)? 1:0]));
+                return;
+            }
+            tmp = first(sorted, choice[(selection)? 1:0]);
+            if (tmp != NULL) { // B ... + C>B -> C B ...
+                tmp->insert(tmp->begin(), new int(choice[(selection)? 0:1]));
+                return;
+            }
+        }
+        sorted->push_back(new List());
+        sorted->at(idx)->push_back(new int(choice[(selection)? 0:1]));
+        sorted->at(idx)->push_back(new int(choice[(selection)? 1:0]));
+    }
     T* merge(Sorted* sorted) const { // Merge sorted list if possible and return next choice (if any)
         assert(sorted != NULL);
 
-        int idx = missing(sorted);
-        if (idx != NO_DATA) { // Entry missing in sorted list
-            T* res = new T[2];
-
-            res[0] = *mList[idx];
-            res[1] = *mList[idx + 1];
-            return res;
-        }
-
         // Merge
-        typename Sorted::iterator toMerge = sorted->end();
-        for (typename Sorted::iterator it = sorted->begin(); it != sorted->end(); ++it) {
-            if (toMerge != sorted->end()) {
-                
+        for (typename Sorted::iterator toMerge = sorted->begin(); toMerge != (sorted->end() - 1); ++toMerge) {
+
+            bool merged = false;
+            for (typename Sorted::iterator it = toMerge + 1; it != sorted->end(); ++it) {
+
+
                 if ((*(*toMerge)->at(0) == *(*it)->at(0)) &&
                     (*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1))) {
 
@@ -129,6 +152,8 @@ private:
 
                     } else // A B, A ... B -> A ... B | C ... B, C B -> C B (first & last ==)
                         sorted->erase(((*toMerge)->size() > (*it)->size())? it:toMerge);
+
+                    merged = true;
                     break;
                 }
                 // A C ..., A ... C (first ==) -> A ... C ...
@@ -136,6 +161,7 @@ private:
 
                     (*it)->insert((*it)->end(), (*toMerge)->begin() + 2, (*toMerge)->end());
                     sorted->erase(toMerge);
+                    merged = true;
                     break;
                 }
                 // ... B D, B ... D (last ==) -> ... B ... D
@@ -144,22 +170,50 @@ private:
 
                     (*it)->insert((*it)->begin(), (*toMerge)->begin(), (*toMerge)->end() - 2);
                     sorted->erase(toMerge);
+                    merged = true;
                     break;
                 }
             }
-            toMerge = it;
+            if (merged)
+                break;
+        }
+
+        // Reply choice with new entry
+        int idx = missing(sorted);
+        if ((idx != NO_DATA) && (sorted->size() == 1))  {
+            T* res = new T[2];
+
+            res[0] = *mList[idx];
+            res[1] = *mList[idx + 1];
+            return res;
         }
 
         // Check sort done
-        if (sorted->at(0)->size() == mList.size()) {
-            while (sorted->size() > 1)
-                sorted->erase(sorted->end() - 1);
-
+        if (done(sorted))
             return NULL;
-        }
 
         // Find next choice
         assert(sorted->size() > 1);
+
+
+
+
+
+        /*
+        T* res = new T[2];
+        for (int i = 0; i < (sorted->size() - 1); ++i) {
+
+
+            for (int m = i + 1; m < sorted->size(); ++m) {
+
+            }
+
+
+        }
+        */
+
+
+
 
         T* res = new T[2];
         for (int i = 0; i < (sorted->size() - 1); ++i) {
@@ -187,31 +241,7 @@ private:
                             }
 
                             // Check not already choosed
-                            bool choosed = false;
-                            for (int l = m + 1; l < sorted->size(); ++l) {
-
-
-
-
-
-
-                                assert(sorted->at(l)->size() == 2);
-
-                                T* choiceA = sorted->at(l)->at(0);
-                                T* choiceB = sorted->at(l)->at(1);
-                                if (((res[0] == *choiceA) || (res[0] == *choiceB)) &&
-                                    ((res[1] == *choiceA) || (res[1] == *choiceB))) {
-                                    choosed = true;
-                                    break;
-                                }
-
-
-
-
-
-
-                            }
-                            if (!choosed)
+                            if (!choosed(sorted, m, res))
                                 return res;
                         }
                     }
@@ -267,7 +297,7 @@ public:
         sort(sorted, choice, selection);
         delete choice;
 
-        return merge(sorted);
+        return (!done(sorted))? merge(sorted):NULL;
     }
 };
 
