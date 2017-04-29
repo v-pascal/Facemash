@@ -95,6 +95,7 @@ private:
         }
         return (maxIdx == (mList.size() - 1))? NO_DATA:maxIdx;
     }
+
     T* merge(Sorted* sorted) const { // Merge sorted list if possible and return next choice (if any)
         assert(sorted != NULL);
 
@@ -111,17 +112,14 @@ private:
         typename Sorted::iterator toMerge = sorted->end();
         for (typename Sorted::iterator it = sorted->begin(); it != sorted->end(); ++it) {
             if (toMerge != sorted->end()) {
-                // A B, A ... B -> A ... B | C ... B, C B -> C B (first & last ==)
+                
                 if ((*(*toMerge)->at(0) == *(*it)->at(0)) &&
                     (*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1))) {
 
+                    if ((*toMerge)->size() == (*it)->size()) {
+                        assert((it + 1) != sorted->end());
 
-
-                    
-                    if ((*toMerge)->size() == (*it)->size()) { // A ..1.. B, A ..2.. B, ..1.. ..2.. -> A ..1.. ..2.. B
-                        assert((*it)->size() == 3);
-                        assert(sorted->size() > 2);
-
+                        // A ..1.. B, A ..2.. B, ..1|2.. ..2|1.. -> A ..1|2.. ..2|1.. B (first & last ==)
                         ++it;
                         (*it)->insert((*it)->begin(), (*toMerge)->at(0));
                         (*it)->insert((*it)->end(), (*toMerge)->at((*toMerge)->size() - 1));
@@ -129,25 +127,14 @@ private:
                         sorted->erase(toMerge + 1);
                         sorted->erase(toMerge);
 
-
-
-
-
-                        
-
-                    } else
+                    } else // A B, A ... B -> A ... B | C ... B, C B -> C B (first & last ==)
                         sorted->erase(((*toMerge)->size() > (*it)->size())? it:toMerge);
                     break;
                 }
                 // A C ..., A ... C (first ==) -> A ... C ...
                 if ((*(*toMerge)->at(0) == *(*it)->at(0)) && (*(*toMerge)->at(1) == *(*it)->at((*it)->size() - 1))) {
 
-
-
-                    (*it)->insert((*it)->end(), (*toMerge)->at((*toMerge)->size() - 1));
-
-
-
+                    (*it)->insert((*it)->end(), (*toMerge)->begin() + 2, (*toMerge)->end());
                     sorted->erase(toMerge);
                     break;
                 }
@@ -155,14 +142,7 @@ private:
                 if ((*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1)) &&
                     (*(*toMerge)->at((*toMerge)->size() - 2) == *(*it)->at(0))) {
 
-
-
-
-                    (*it)->insert((*it)->begin(), (*toMerge)->at(0));
-
-
-
-
+                    (*it)->insert((*it)->begin(), (*toMerge)->begin(), (*toMerge)->end() - 2);
                     sorted->erase(toMerge);
                     break;
                 }
@@ -269,6 +249,8 @@ public:
     T* next(Sorted* &sorted, T* choice, bool selection) { // Update sorted list and return next choice (if any)
         if (!mStarted) {
             
+
+
 
 
 
