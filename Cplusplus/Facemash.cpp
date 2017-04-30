@@ -129,6 +129,16 @@ private:
     T* merge(Sorted* sorted) const { // Merge sorted list if possible and return next choice (if any)
         assert(sorted != NULL);
 
+        // Reply choice with new entry
+        int idx = missing(sorted);
+        if (idx != NO_DATA) {
+            T* res = new T[2];
+
+            res[0] = *mList[idx];
+            res[1] = *mList[idx + 1];
+            return res;
+        }
+
         // Merge
         for (typename Sorted::iterator toMerge = sorted->begin(); toMerge != (sorted->end() - 1); ++toMerge) {
 
@@ -138,6 +148,12 @@ private:
 
                 if ((*(*toMerge)->at(0) == *(*it)->at(0)) &&
                     (*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1))) {
+
+
+
+
+
+
 
                     if ((*toMerge)->size() == (*it)->size()) {
                         assert((it + 1) != sorted->end());
@@ -152,6 +168,12 @@ private:
 
                     } else // A B, A ... B -> A ... B | C ... B, C B -> C B (first & last ==)
                         sorted->erase(((*toMerge)->size() > (*it)->size())? it:toMerge);
+
+
+
+
+
+
 
                     merged = true;
                     break;
@@ -178,16 +200,6 @@ private:
                 break;
         }
 
-        // Reply choice with new entry
-        int idx = missing(sorted);
-        if ((idx != NO_DATA) && (sorted->size() == 1))  {
-            T* res = new T[2];
-
-            res[0] = *mList[idx];
-            res[1] = *mList[idx + 1];
-            return res;
-        }
-
         // Check sort done
         if (done(sorted))
             return NULL;
@@ -195,44 +207,22 @@ private:
         // Find next choice
         assert(sorted->size() > 1);
 
-
-
-
-
-        /*
         T* res = new T[2];
         for (int i = 0; i < (sorted->size() - 1); ++i) {
-
-
             for (int m = i + 1; m < sorted->size(); ++m) {
 
-            }
-
-
-        }
-        */
-
-
-
-
-        T* res = new T[2];
-        for (int i = 0; i < (sorted->size() - 1); ++i) {
-
-            for (int j = 0; j < sorted->at(i)->size(); ++j) {
-                res[0] = *sorted->at(i)->at(j);
-
-                for (int m = i + 1; m < sorted->size(); ++m) {
+                for (int j = 0; j < sorted->at(i)->size(); ++j) {
                     for (int k = 0; k < sorted->at(m)->size(); ++k) {
 
-                        if (res[0] == *sorted->at(m)->at(k)) { // ... A B, ... C B | B A ..., B C ... -> A ? C
-                            if ((!j) || (!k)) {
+                        if (*sorted->at(i)->at(j) == *sorted->at(m)->at(k)) {
+                            if ((!j) || (!k)) { // ... B A ..., ... B C ... -> A ? C
                                 assert((j + 1) < sorted->at(i)->size());
                                 assert((k + 1) < sorted->at(m)->size());
 
                                 res[0] = *sorted->at(i)->at(j + 1);
                                 res[1] = *sorted->at(m)->at(k + 1);
 
-                            } else {
+                            } else { // ... A B ..., ... C B ... -> A ? C
                                 assert((j - 1) >= 0);
                                 assert((k - 1) >= 0);
 
@@ -246,7 +236,6 @@ private:
                         }
                     }
                 }
-
             }
         }
         assert(NULL);
@@ -368,6 +357,7 @@ int main() {
         if (list != NULL)
             display(*list);
         cout << endl;
+
 
 
 
