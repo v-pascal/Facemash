@@ -69,6 +69,53 @@ private:
         }
         return res;
     }
+    static List* find(Sorted* sorted, typename Sorted::iterator mergeA, typename Sorted::iterator mergeB) {
+
+        // Return list containing entries defined in 'mergeA' following or preceding entries defined in 'mergeB' (excepted bounds)
+        int size = (*mergeA)->size() + (*mergeB)->size() - 4; // - 4 -> To remove bounds in the size calculation
+
+        for (typename Sorted::iterator it = sorted->begin(); it != sorted->end(); ++it) {
+            if ((it != mergeA) && (it != mergeB) && ((*it)->size() == size)) {
+                int idx = NO_DATA;
+
+                if (*(*mergeA)->at(1) == *(*it)->at(0)) {
+                    int idxA = 1;
+                    for (int i = 1; i < ((*mergeA)->size() - 2); ++i)
+                        if (*(*mergeA)->at(++idxA) != *(*it)->at(i))
+                            break;
+                    if (idxA != ((*mergeA)->size() - 2))
+                        continue;
+                    idx = idxA;
+
+                    int idxB = 0;
+                    for ( ; idx < (*it)->size(); ++idx)
+                        if (*(*mergeB)->at(++idxB) != *(*it)->at(idx))
+                            break;
+                    if (idxB != ((*mergeB)->size() - 2))
+                        continue;
+
+                } else if (*(*mergeB)->at(1) == *(*it)->at(0)) {
+                    int idxB = 1;
+                    for (int i = 1; i < ((*mergeB)->size() - 2); ++i)
+                        if (*(*mergeB)->at(++idxB) != *(*it)->at(i))
+                            break;
+                    if (idxB != ((*mergeB)->size() - 2))
+                        continue;
+                    idx = idxB;
+
+                    int idxA = 0;
+                    for ( ; idx < (*it)->size(); ++idx)
+                        if (*(*mergeA)->at(++idxA) != *(*it)->at(idx))
+                            break;
+                    if (idxA != ((*mergeA)->size() - 2))
+                        continue;
+                }
+                if (idx == (*it)->size())
+                    return (*it);
+            }
+        }
+        return NULL;
+    }
 
     int find(T data) const { // Return index position of data in the list (or NO_DATA if not found)
         for (int i = 0; i < mList.size(); ++i)
@@ -145,36 +192,23 @@ private:
             bool merged = false;
             for (typename Sorted::iterator it = toMerge + 1; it != sorted->end(); ++it) {
 
-
                 if ((*(*toMerge)->at(0) == *(*it)->at(0)) &&
                     (*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1))) {
 
+                    // A B, A ... B -> A ... B | C ... B, C B -> C ... B (first & last ==)
+                    if ((*toMerge)->size() == 2) sorted->erase(toMerge);
+                    else if ((*it)->size() == 2) sorted->erase(it);
+                    else { // A ..1.. B, A ..2.. B, ..1|2.. ..2|1.. -> A ..1|2.. ..2|1.. B (first & last ==)
 
+                        List* toKeep = find(sorted, toMerge, it);
+                        assert(toKeep != NULL);
 
+                        toKeep->insert(toKeep->begin(), (*toMerge)->at(0));
+                        toKeep->insert(toKeep->end(), (*toMerge)->at((*toMerge)->size() - 1));
 
-
-
-
-                    if ((*toMerge)->size() == (*it)->size()) {
-                        assert((it + 1) != sorted->end());
-
-                        // A ..1.. B, A ..2.. B, ..1|2.. ..2|1.. -> A ..1|2.. ..2|1.. B (first & last ==)
-                        ++it;
-                        (*it)->insert((*it)->begin(), (*toMerge)->at(0));
-                        (*it)->insert((*it)->end(), (*toMerge)->at((*toMerge)->size() - 1));
-                    
-                        sorted->erase(toMerge + 1);
+                        sorted->erase(it);
                         sorted->erase(toMerge);
-
-                    } else // A B, A ... B -> A ... B | C ... B, C B -> C B (first & last ==)
-                        sorted->erase(((*toMerge)->size() > (*it)->size())? it:toMerge);
-
-
-
-
-
-
-
+                    }
                     merged = true;
                     break;
                 }
@@ -231,7 +265,7 @@ private:
                             }
 
                             // Check not already choosed
-                            if (!choosed(sorted, m, res))
+                            if (!choosed(sorted, i, res))
                                 return res;
                         }
                     }
@@ -311,12 +345,17 @@ int main() {
     // Fill list
     string entry;
     while ((!entry.empty()) || (facemash->size() < MIN_ENTRIES_COUNT)) {
-        cout << "Fill list by entering new integer entry or nothing when full: ";
+        cout << "Fill list by entering new integer entry or nothing when full (or 'q' to quit): ";
 
         getline(cin, entry);
         if (entry.empty()) {
             if (facemash->size() < MIN_ENTRIES_COUNT)
                 cout << "Not enough entries in list!" << endl;
+
+        } else if (entry.at(0) == 'q') {
+            delete facemash;
+            return 0;
+
         } else switch(facemash->add(new int(atoi(entry.c_str())))) {
 
             case Facemash<int>::AR_SUCCEEDED: {
