@@ -55,9 +55,9 @@ private:
         }
         return NULL;
     }
-    static bool choosed(Sorted* sorted, int idx, T* choice) { // Return if choice already done
+    static bool choosed(Sorted* sorted, T* choice) { // Return if choice already done
         bool res = false;
-        for (int i = idx; i < sorted->size(); ++i) {
+        for (int i = 0; i < sorted->size(); ++i) {
             for (int j = 0; j < (sorted->at(i)->size() - 1); ++j) {
                 if (((choice[0] == *sorted->at(i)->at(j)) || (choice[0] == *sorted->at(i)->at(j + 1))) &&
                     ((choice[1] == *sorted->at(i)->at(j)) || (choice[1] == *sorted->at(i)->at(j + 1)))) {
@@ -138,15 +138,27 @@ private:
     }
     bool done(Sorted* sorted) const { // Return sort completed flag
         if (sorted->at(0)->size() == mList.size()) {
-            while (sorted->size() > 1)
+            while (sorted->size() > 1) {
+                int size;
+                while (size = (*(sorted->end() - 1))->size()) {
+                    delete (*(sorted->end() - 1))->at(size - 1);
+                    (*(sorted->end() - 1))->pop_back();
+                }
+                (*(sorted->end() - 1))->clear();
                 sorted->erase(sorted->end() - 1);
-
+            }
             return true;
         }
         if (sorted->at(sorted->size() - 1)->size() == mList.size()) {
-            while (sorted->size() > 1)
+            while (sorted->size() > 1) {
+                int size;
+                while (size = (*sorted->begin())->size()) {
+                    delete (*sorted->begin())->at(size - 1);
+                    (*sorted->begin())->pop_back();
+                }
+                (*sorted->begin())->clear();
                 sorted->erase(sorted->begin());
-
+            }
             return true;
         }
         return false;
@@ -220,12 +232,29 @@ private:
                     merged = true;
                     break;
                 }
+                //  A ... C, A C ... (first ==) -> A ... C ...
+                if ((*(*it)->at(0) == *(*toMerge)->at(0)) && (*(*it)->at(1) == *(*toMerge)->at((*toMerge)->size() - 1))) {
+
+                    (*toMerge)->insert((*toMerge)->end(), (*it)->begin() + 2, (*it)->end());
+                    sorted->erase(it);
+                    merged = true;
+                    break;
+                }
                 // ... B D, B ... D (last ==) -> ... B ... D
                 if ((*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1)) &&
                     (*(*toMerge)->at((*toMerge)->size() - 2) == *(*it)->at(0))) {
 
                     (*it)->insert((*it)->begin(), (*toMerge)->begin(), (*toMerge)->end() - 2);
                     sorted->erase(toMerge);
+                    merged = true;
+                    break;
+                }
+                // B ... D, ... B D (last ==) -> ... B ... D
+                if ((*(*it)->at((*it)->size() - 1) == *(*toMerge)->at((*toMerge)->size() - 1)) &&
+                    (*(*it)->at((*it)->size() - 2) == *(*toMerge)->at(0))) {
+
+                    (*toMerge)->insert((*toMerge)->begin(), (*it)->begin(), (*it)->end() - 2);
+                    sorted->erase(it);
                     merged = true;
                     break;
                 }
@@ -265,7 +294,7 @@ private:
                             }
 
                             // Check not already choosed
-                            if (!choosed(sorted, i, res))
+                            if (!choosed(sorted, res))
                                 return res;
                         }
                     }
@@ -325,6 +354,8 @@ public:
 };
 
 //////
+//#define TEST
+
 void display(const Facemash<int>::List& list) {
     for (int i = 0; i < list.size(); ++i)
         cout << (*list[i]) << " ";
@@ -335,6 +366,19 @@ void display(const Facemash<int>::Sorted& sorted) {
     cout << endl;
     for (int i = 0; i < sorted.size(); ++i)
         display(*sorted[i]);
+}
+void destroy(Facemash<int>::Sorted* list) {
+    while (list->size()) {
+        int size;
+        while (size = list->at(0)->size()) {
+            delete list->at(0)->at(size - 1);
+            list->at(0)->pop_back();
+        }
+        list->at(0)->clear();
+        list->erase(list->begin());
+    }    
+    list->clear();
+    delete list;
 }
 
 int main() {
@@ -376,16 +420,17 @@ int main() {
     display(facemash->get());
     cout << endl << "Sort stared..." << endl;
 
+    // Start sorting
+    int* choice = NULL;
+    Facemash<int>::Sorted* list = NULL;
+    bool selection = false;
+
+#ifndef TEST
     struct termios old_tio, new_tio;
     tcgetattr(STDIN_FILENO, &old_tio);
     new_tio = old_tio;
     new_tio.c_lflag &= (~ICANON & ~ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
-
-    // Start sorting
-    int* choice = NULL;
-    Facemash<int>::Sorted* list = NULL;
-    bool selection = false;
 
     while (choice = facemash->next(list, choice, selection)) {
         char reply;
@@ -393,10 +438,10 @@ int main() {
 
 
 
+        cout << endl;
         if (list != NULL)
             display(*list);
         cout << endl;
-
 
 
 
@@ -418,7 +463,35 @@ int main() {
     if ((list != NULL) && (list->size() == 1) && (list->at(0)->size() == facemash->size())) {
         cout << endl << "=> Sorted list result: ";
         display(*list->at(0));
+        delete list;
     }
+#else
+    assert(facemash->size() < 32); // < Bits count in integer (see mask variable in loop below)
+    int count = facemash->size() * facemash->size();
+
+    for (unsigned int test = 0; test < count; ++test) {
+        if (list != NULL)
+            destroy(list);
+
+        choice = NULL;
+        list = NULL;
+        int mask = 1;
+
+        cout << "=> Sorted list result #" << test << ": ";
+
+        // Next test
+        while (choice = facemash->next(list, choice, selection)) {
+            selection = test & mask;
+            mask <<= 1;
+        }
+        if ((list != NULL) && (list->size() == 1) && (list->at(0)->size() == facemash->size()))
+            display(*list->at(0));
+        else {
+            cout << endl << "=> Invalid list result for test #" << test << endl;
+            break;
+        }
+    }
+#endif
     delete facemash;
 
     return 0;
