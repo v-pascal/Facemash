@@ -21,7 +21,7 @@ inline string numToStr(T number) {
 };
 
 //
-#define MIN_ENTRIES_COUNT   3
+#define MIN_ENTRIES_COUNT   2
 #define NO_DATA             -1
 
 template<typename T>
@@ -37,10 +37,47 @@ public:
     typedef vector<T*> List;
     typedef vector<List*> Sorted;
 
+    enum Choice {
+        UNDEFINED = NO_DATA,
+        LESS = 0,
+        MORE = 1
+    };
+
 private:
     bool mStarted;
     List mList;
 
+    char** init() const { // Return initialized sorted list
+        char** res = new char*[mList.size()];
+        for (int i = 0; i < mList.size(); ++i) {
+            res[i] = new char[mList.size()];
+
+            for (int j = 0; j < mList.size(); ++j)
+                res[i][j] = static_cast<char>(UNDEFINED);
+        }
+        return res;
+    }
+    inline int indexOf(T data) const { // Return index of data in list
+        for (int res = 0; res < mList.size(); ++res)
+            if (*mList[res] == data)
+                return res;
+
+        return NO_DATA;
+    }
+    int missing(Sorted* sorted) const { // Return index of entry not present in sorted list (-1)
+        int maxIdx = NO_DATA;
+
+        for (typename Sorted::iterator it = sorted->begin(); it != sorted->end(); ++it) {
+            for (typename List::iterator iter = (*it)->begin(); iter != (*it)->end(); ++iter) {
+                int idx = indexOf(*(*iter));
+                if (idx > maxIdx)
+                    maxIdx = idx;
+            }
+        }
+        return (maxIdx == (mList.size() - 1))? NO_DATA:maxIdx;
+    }
+
+    /*
     static List* last(Sorted* sorted, T data) { // Return list that contains data at last position
         for (typename Sorted::reverse_iterator iter = sorted->rbegin(); iter != sorted->rend(); ++iter) {
             if ((*(*iter)->at((*iter)->size() - 1)) == data)
@@ -123,18 +160,6 @@ private:
                 return i;
 
         return NO_DATA;
-    }
-    int missing(Sorted* sorted) const { // Return index of entry not present in sorted list (-1)
-        int maxIdx = NO_DATA;
-
-        for (typename Sorted::iterator it = sorted->begin(); it != sorted->end(); ++it) {
-            for (typename List::iterator iter = (*it)->begin(); iter != (*it)->end(); ++iter) {
-                int idx = find(*(*iter));
-                if (idx > maxIdx)
-                    maxIdx = idx;
-            }
-        }
-        return (maxIdx == (mList.size() - 1))? NO_DATA:maxIdx;
     }
     bool done(Sorted* sorted) const { // Return sort completed flag
         if (sorted->at(0)->size() == mList.size()) {
@@ -304,6 +329,7 @@ private:
         assert(NULL);
         return NULL;
     }
+    */
 
 public:
     enum AddResult {
@@ -317,7 +343,7 @@ public:
         if (mStarted)
             return AR_ALREADY_STARTED;
 
-        if (find(*e) != NO_DATA)
+        if (indexOf(*e) != NO_DATA)
             return AR_ALREADY_EXISTS;
 
         mList.push_back(e);
@@ -328,7 +354,27 @@ public:
     inline int size() const { return mList.size(); }
 
     //
-    T* next(Sorted* &sorted, T* choice, bool selection) { // Update sorted list and return next choice (if any)
+    static void destroy(Sorted* list) { // Destroy sorted list
+        while (list->size()) {
+            int size;
+            while (size = list->at(0)->size()) {
+                delete list->at(0)->at(size - 1);
+                list->at(0)->pop_back();
+            }
+            list->at(0)->clear();
+            list->erase(list->begin());
+        }    
+        list->clear();
+        delete list;
+    }
+    void destroy(char** ranking) const { // Destroy ranking
+        for (int i = 0; i < mList.size(); ++i)
+            delete [] ranking[i];
+        
+        delete [] ranking;
+    }
+
+    T* next(char** &ranking, T* choice, bool selection) { // Update ranking and return next choice (if any)
         if (!mStarted) {
             
 
@@ -338,23 +384,72 @@ public:
 
             mStarted = true;
         }
-        if ((sorted == NULL) && (choice == NULL)) {
+        if ((ranking == NULL) && (choice == NULL)) {
             T* res = new T[2];
 
             res[0] = *mList[0];
             res[1] = *mList[1];
             return res;
         }
+        if (ranking == NULL)
+            ranking = init();
+
+        // Implement choice into ranking
+        ranking[indexOf(choice[0])][indexOf(choice[1])] = (selection)? MORE:LESS;
+        ranking[indexOf(choice[1])][indexOf(choice[0])] = (selection)? LESS:MORE;
+        delete choice;
+
+        // Sort list according ranking
+        Facemash<int>::Sorted* sorted = sort(ranking);
+        if ((sorted->size() == 1) && (sorted->at(0)->size() == mList.size())) {
+
+            destroy(sorted);
+            return NULL; // DONE
+        }
+
+        // Reply choice with missing entry (if any)
+        int idx = missing(sorted);
+        if (idx != NO_DATA) {
+            T* res = new T[2];
+
+            res[0] = *mList[idx];
+            res[1] = *mList[idx + 1];
+            return res;
+        }
+
+
+
+
+
+        /*
         assert(choice != NULL);
         sort(sorted, choice, selection);
         delete choice;
 
         return (!done(sorted))? merge(sorted):NULL;
+        */
+        
+
+
+
+
+
+
+        return NULL;
+    }
+    Sorted* sort(char** ranking) { // Return sorted list according choices
+
+
+
+
+
+
+        return NULL;
     }
 };
 
 //////
-//#define TEST
+#define TEST
 
 void display(const Facemash<int>::List& list) {
     for (int i = 0; i < list.size(); ++i)
@@ -366,19 +461,6 @@ void display(const Facemash<int>::Sorted& sorted) {
     cout << endl;
     for (int i = 0; i < sorted.size(); ++i)
         display(*sorted[i]);
-}
-void destroy(Facemash<int>::Sorted* list) {
-    while (list->size()) {
-        int size;
-        while (size = list->at(0)->size()) {
-            delete list->at(0)->at(size - 1);
-            list->at(0)->pop_back();
-        }
-        list->at(0)->clear();
-        list->erase(list->begin());
-    }    
-    list->clear();
-    delete list;
 }
 
 int main() {
@@ -422,7 +504,7 @@ int main() {
 
     // Start sorting
     int* choice = NULL;
-    Facemash<int>::Sorted* list = NULL;
+    char** list = NULL;
     bool selection = false;
 
 #ifndef TEST
@@ -438,10 +520,12 @@ int main() {
 
 
 
+
         cout << endl;
         if (list != NULL)
             display(*list);
         cout << endl;
+
 
 
 
@@ -471,7 +555,7 @@ int main() {
 
     for (unsigned int test = 0; test < count; ++test) {
         if (list != NULL)
-            destroy(list);
+            facemash->destroy(list);
 
         choice = NULL;
         list = NULL;
@@ -484,14 +568,21 @@ int main() {
             selection = test & mask;
             mask <<= 1;
         }
-        if ((list != NULL) && (list->size() == 1) && (list->at(0)->size() == facemash->size()))
-            display(*list->at(0));
+
+        // Display result
+        Facemash<int>::Sorted* sorted = facemash->sort(list);
+        if ((sorted != NULL) && (sorted->size() == 1) && (sorted->at(0)->size() == facemash->size()))
+            display(*sorted->at(0));
         else {
             cout << endl << "=> Invalid list result for test #" << test << endl;
+            if (sorted != NULL)
+                Facemash<int>::destroy(sorted);
             break;
         }
+        Facemash<int>::destroy(sorted);
     }
 #endif
+    facemash->destroy(list);
     delete facemash;
 
     return 0;
