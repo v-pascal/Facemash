@@ -47,6 +47,82 @@ private:
     bool mStarted;
     List mList;
 
+    static List* last(Sorted* sorted, T data) { // Return list that contains data at last position
+        for (typename Sorted::reverse_iterator iter = sorted->rbegin(); iter != sorted->rend(); ++iter) {
+            if ((*(*iter)->at((*iter)->size() - 1)) == data)
+                return (*iter);
+        }
+        return NULL;
+    }
+    static List* first(Sorted* sorted, T data) { // Return list that contains data at first position
+        for (typename Sorted::iterator iter = sorted->begin(); iter != sorted->end(); ++iter) {
+            if ((*(*iter)->at(0)) == data)
+                return (*iter);
+        }
+        return NULL;
+    }
+    static bool choosed(Sorted* sorted, T* choice) { // Return if choice already done
+        bool res = false;
+        for (int i = 0; i < sorted->size(); ++i) {
+            for (int j = 0; j < (sorted->at(i)->size() - 1); ++j) {
+                if (((choice[0] == *sorted->at(i)->at(j)) || (choice[0] == *sorted->at(i)->at(j + 1))) &&
+                    ((choice[1] == *sorted->at(i)->at(j)) || (choice[1] == *sorted->at(i)->at(j + 1)))) {
+
+                    res = true;
+                    break;
+                }
+            }
+        }
+        return res;
+    }
+    static List* find(Sorted* sorted, typename Sorted::iterator mergeA, typename Sorted::iterator mergeB) {
+
+        // Return list containing entries defined in 'mergeA' following or preceding entries defined in 'mergeB' (excepted bounds)
+        int size = (*mergeA)->size() + (*mergeB)->size() - 4; // - 4 -> To remove bounds in the size calculation
+
+        for (typename Sorted::iterator it = sorted->begin(); it != sorted->end(); ++it) {
+            if ((it != mergeA) && (it != mergeB) && ((*it)->size() == size)) {
+                int idx = NO_DATA;
+
+                if (*(*mergeA)->at(1) == *(*it)->at(0)) {
+                    int idxA = 1;
+                    for (int i = 1; i < ((*mergeA)->size() - 2); ++i)
+                        if (*(*mergeA)->at(++idxA) != *(*it)->at(i))
+                            break;
+                    if (idxA != ((*mergeA)->size() - 2))
+                        continue;
+                    idx = idxA;
+
+                    int idxB = 0;
+                    for ( ; idx < (*it)->size(); ++idx)
+                        if (*(*mergeB)->at(++idxB) != *(*it)->at(idx))
+                            break;
+                    if (idxB != ((*mergeB)->size() - 2))
+                        continue;
+
+                } else if (*(*mergeB)->at(1) == *(*it)->at(0)) {
+                    int idxB = 1;
+                    for (int i = 1; i < ((*mergeB)->size() - 2); ++i)
+                        if (*(*mergeB)->at(++idxB) != *(*it)->at(i))
+                            break;
+                    if (idxB != ((*mergeB)->size() - 2))
+                        continue;
+                    idx = idxB;
+
+                    int idxA = 0;
+                    for ( ; idx < (*it)->size(); ++idx)
+                        if (*(*mergeA)->at(++idxA) != *(*it)->at(idx))
+                            break;
+                    if (idxA != ((*mergeA)->size() - 2))
+                        continue;
+                }
+                if (idx == (*it)->size())
+                    return (*it);
+            }
+        }
+        return NULL;
+    }
+
     char** init() const { // Return initialized sorted list
         char** res = new char*[mList.size()];
         for (int i = 0; i < mList.size(); ++i) {
@@ -76,22 +152,35 @@ private:
         }
         return (maxIdx == (mList.size() - 1))? NO_DATA:maxIdx;
     }
+    bool done(Sorted* sorted) const { // Return sort completed flag
+        if (sorted->at(0)->size() == mList.size()) {
+            while (sorted->size() > 1) {
+                int size;
+                while (size = (*(sorted->end() - 1))->size()) {
+                    delete (*(sorted->end() - 1))->at(size - 1);
+                    (*(sorted->end() - 1))->pop_back();
+                }
+                (*(sorted->end() - 1))->clear();
+                sorted->erase(sorted->end() - 1);
+            }
+            return true;
+        }
+        if (sorted->at(sorted->size() - 1)->size() == mList.size()) {
+            while (sorted->size() > 1) {
+                int size;
+                while (size = (*sorted->begin())->size()) {
+                    delete (*sorted->begin())->at(size - 1);
+                    (*sorted->begin())->pop_back();
+                }
+                (*sorted->begin())->clear();
+                sorted->erase(sorted->begin());
+            }
+            return true;
+        }
+        return false;
+    }
 
     /*
-    static List* last(Sorted* sorted, T data) { // Return list that contains data at last position
-        for (typename Sorted::reverse_iterator iter = sorted->rbegin(); iter != sorted->rend(); ++iter) {
-            if ((*(*iter)->at((*iter)->size() - 1)) == data)
-                return (*iter);
-        }
-        return NULL;
-    }
-    static List* first(Sorted* sorted, T data) { // Return list that contains data at first position
-        for (typename Sorted::iterator iter = sorted->begin(); iter != sorted->end(); ++iter) {
-            if ((*(*iter)->at(0)) == data)
-                return (*iter);
-        }
-        return NULL;
-    }
     static bool choosed(Sorted* sorted, T* choice) { // Return if choice already done
         bool res = false;
         for (int i = 0; i < sorted->size(); ++i) {
@@ -187,6 +276,21 @@ private:
             return true;
         }
         return false;
+    }
+
+    static bool choosed(Sorted* sorted, T* choice) { // Return if choice already done
+        bool res = false;
+        for (int i = 0; i < sorted->size(); ++i) {
+            for (int j = 0; j < (sorted->at(i)->size() - 1); ++j) {
+                if (((choice[0] == *sorted->at(i)->at(j)) || (choice[0] == *sorted->at(i)->at(j + 1))) &&
+                    ((choice[1] == *sorted->at(i)->at(j)) || (choice[1] == *sorted->at(i)->at(j + 1)))) {
+
+                    res = true;
+                    break;
+                }
+            }
+        }
+        return res;
     }
 
     static void sort(Sorted* &sorted, T* choice, bool selection) { // Take in account new choice into sorted list
@@ -355,6 +459,9 @@ public:
 
     //
     static void destroy(Sorted* list) { // Destroy sorted list
+        if (list == NULL)
+            return;
+
         while (list->size()) {
             int size;
             while (size = list->at(0)->size()) {
@@ -368,6 +475,9 @@ public:
         delete list;
     }
     void destroy(char** ranking) const { // Destroy ranking
+        if (ranking == NULL)
+            return;
+
         for (int i = 0; i < mList.size(); ++i)
             delete [] ranking[i];
         
@@ -397,7 +507,7 @@ public:
         // Implement choice into ranking
         ranking[indexOf(choice[0])][indexOf(choice[1])] = (selection)? MORE:LESS;
         ranking[indexOf(choice[1])][indexOf(choice[0])] = (selection)? LESS:MORE;
-        delete choice;
+        delete [] choice;
 
         // Sort list according ranking
         Facemash<int>::Sorted* sorted = sort(ranking);
@@ -414,11 +524,84 @@ public:
 
             res[0] = *mList[idx];
             res[1] = *mList[idx + 1];
+
+            destroy(sorted);
             return res;
         }
 
 
 
+        // Merge
+        for (typename Sorted::iterator toMerge = sorted->begin(); toMerge != (sorted->end() - 1); ++toMerge) {
+
+            bool merged = false;
+            for (typename Sorted::iterator it = toMerge + 1; it != sorted->end(); ++it) {
+
+                if ((*(*toMerge)->at(0) == *(*it)->at(0)) &&
+                    (*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1))) {
+
+                    // A B, A ... B -> A ... B | C ... B, C B -> C ... B (first & last ==)
+                    if ((*toMerge)->size() == 2) sorted->erase(toMerge);
+                    else if ((*it)->size() == 2) sorted->erase(it);
+                    else { // A ..1.. B, A ..2.. B, ..1|2.. ..2|1.. -> A ..1|2.. ..2|1.. B (first & last ==)
+
+                        List* toKeep = find(sorted, toMerge, it);
+                        assert(toKeep != NULL);
+
+                        toKeep->insert(toKeep->begin(), (*toMerge)->at(0));
+                        toKeep->insert(toKeep->end(), (*toMerge)->at((*toMerge)->size() - 1));
+
+                        sorted->erase(it);
+                        sorted->erase(toMerge);
+                    }
+                    merged = true;
+                    break;
+                }
+                // A C ..., A ... C (first ==) -> A ... C ...
+                if ((*(*toMerge)->at(0) == *(*it)->at(0)) && (*(*toMerge)->at(1) == *(*it)->at((*it)->size() - 1))) {
+
+                    (*it)->insert((*it)->end(), (*toMerge)->begin() + 2, (*toMerge)->end());
+                    sorted->erase(toMerge);
+                    merged = true;
+                    break;
+                }
+                //  A ... C, A C ... (first ==) -> A ... C ...
+                if ((*(*it)->at(0) == *(*toMerge)->at(0)) && (*(*it)->at(1) == *(*toMerge)->at((*toMerge)->size() - 1))) {
+
+                    (*toMerge)->insert((*toMerge)->end(), (*it)->begin() + 2, (*it)->end());
+                    sorted->erase(it);
+                    merged = true;
+                    break;
+                }
+                // ... B D, B ... D (last ==) -> ... B ... D
+                if ((*(*toMerge)->at((*toMerge)->size() - 1) == *(*it)->at((*it)->size() - 1)) &&
+                    (*(*toMerge)->at((*toMerge)->size() - 2) == *(*it)->at(0))) {
+
+                    (*it)->insert((*it)->begin(), (*toMerge)->begin(), (*toMerge)->end() - 2);
+                    sorted->erase(toMerge);
+                    merged = true;
+                    break;
+                }
+                // B ... D, ... B D (last ==) -> ... B ... D
+                if ((*(*it)->at((*it)->size() - 1) == *(*toMerge)->at((*toMerge)->size() - 1)) &&
+                    (*(*it)->at((*it)->size() - 2) == *(*toMerge)->at(0))) {
+
+                    (*toMerge)->insert((*toMerge)->begin(), (*it)->begin(), (*it)->end() - 2);
+                    sorted->erase(it);
+                    merged = true;
+                    break;
+                }
+            }
+            if (merged)
+                break;
+        }
+
+        // Check sort done
+        if (done(sorted)) {
+
+            destroy(sorted);
+            return NULL; // DONE
+        }
 
 
         /*
@@ -435,16 +618,81 @@ public:
 
 
 
+        // Find next choice
+        assert(sorted->size() > 1);
+
+        T* res = new T[2];
+        for (int i = 0; i < (sorted->size() - 1); ++i) {
+            for (int m = i + 1; m < sorted->size(); ++m) {
+
+                for (int j = 0; j < sorted->at(i)->size(); ++j) {
+                    for (int k = 0; k < sorted->at(m)->size(); ++k) {
+
+                        if (*sorted->at(i)->at(j) == *sorted->at(m)->at(k)) {
+                            if ((!j) || (!k)) { // ... B A ..., ... B C ... -> A ? C
+                                assert((j + 1) < sorted->at(i)->size());
+                                assert((k + 1) < sorted->at(m)->size());
+
+                                res[0] = *sorted->at(i)->at(j + 1);
+                                res[1] = *sorted->at(m)->at(k + 1);
+
+                            } else { // ... A B ..., ... C B ... -> A ? C
+                                assert((j - 1) >= 0);
+                                assert((k - 1) >= 0);
+
+                                res[0] = *sorted->at(i)->at(j - 1);
+                                res[1] = *sorted->at(m)->at(k - 1);
+                            }
+
+                            // Check not already choosed
+                            if (!choosed(sorted, res)) {
+
+                                destroy(sorted);
+                                return res;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert(NULL);
+
+        delete [] res;
+        destroy(sorted);
         return NULL;
     }
     Sorted* sort(char** ranking) { // Return sorted list according choices
+        Sorted* res = new Sorted();
 
+        for (int i = 1; i < mList.size(); ++i) {
+            for (int j = 0; j < i; ++j) {
 
+                if (ranking[i][j] == UNDEFINED)
+                    continue;
 
+                T* more = (ranking[i][j] == MORE)? mList[i]:mList[j];
+                T* less = (ranking[i][j] == LESS)? mList[i]:mList[j];
 
-
-
-        return NULL;
+                int idx = res->size();
+                if (idx > 0) {
+                    List* tmp = last(res, *more);
+                    if (tmp != NULL) { // ... B + B>C -> ... B C
+                        tmp->push_back(new T(*less));
+                        continue;
+                    }
+                    tmp = first(res, *less);
+                    if (tmp != NULL) { // B ... + C>B -> C B ...
+                        tmp->insert(tmp->begin(), new T(*more));
+                        continue;
+                    }
+                }
+                res->push_back(new List());
+                res->at(idx)->push_back(new T(*more));
+                res->at(idx)->push_back(new T(*less));
+            }
+        }
+        done(res);
+        return res;
     }
 };
 
@@ -567,6 +815,18 @@ int main() {
         while (choice = facemash->next(list, choice, selection)) {
             selection = test & mask;
             mask <<= 1;
+
+
+            /*
+            if (list != NULL) {
+                Facemash<int>::Sorted* sorted = facemash->sort(list);
+                if (sorted != NULL)
+                    display(*sorted->at(0));
+            }
+            */
+
+
+
         }
 
         // Display result
@@ -575,11 +835,44 @@ int main() {
             display(*sorted->at(0));
         else {
             cout << endl << "=> Invalid list result for test #" << test << endl;
-            if (sorted != NULL)
-                Facemash<int>::destroy(sorted);
+            //Facemash<int>::destroy(sorted);
+
+
+
+
+            if (sorted != NULL) {
+                for (int u = 0; u < sorted->size(); ++u)
+                    display(*sorted->at(u));
+            } else
+                cout << "Empty";
+
+
+
+
             break;
         }
         Facemash<int>::destroy(sorted);
+
+
+
+
+        /*
+        if (test == 2) {
+            cout << "OLA";
+            Facemash<int>::Sorted* sorted = facemash->sort(list);
+            if (sorted != NULL) {
+                for (int u = 0; u < sorted->size(); ++u)
+                    display(*sorted->at(u));
+            } else
+                cout << "Empty";
+            break;
+        } 
+        */  
+
+
+
+
+
     }
 #endif
     facemash->destroy(list);
