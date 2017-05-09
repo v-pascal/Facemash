@@ -46,6 +46,16 @@ private:
     bool mStarted;
     List mList;
 
+    inline char** init() const { // Return new ranking
+        char** res = new char*[mList.size()];
+        for (int i = 0; i < mList.size(); ++i) {
+            res[i] = new char[mList.size()];
+
+            for (int j = 0; j < mList.size(); ++j)
+                res[i][j] = static_cast<char>(UNDEFINED);
+        }
+        return res;
+    }
     inline int indexOf(T data) const { // Return index of data in list
         for (int res = 0; res < mList.size(); ++res)
             if (*mList[res] == data)
@@ -55,11 +65,36 @@ private:
     }
     inline int missing(char** ranking) const { // Return missing first choice entry index (return NO_DATA if done)
         for (int res = 0; res < (mList.size() - 1); ++res)
-            if (ranking[res][res + 1] == UNDEFINED)
+            if (ranking[res][res + 1] == static_cast<char>(UNDEFINED))
                 return res;
 
         return NO_DATA;
     }
+
+
+
+
+
+
+
+    void display(char** ranking) {
+        cout << endl;
+        for (int i = 0; i < mList.size(); ++i) {
+            cout << endl;
+            for (int j = 0; j < mList.size(); ++j) {
+                if (j == i)
+                    cout << 'X' << " ";
+                else
+                    cout << static_cast<int>(ranking[i][j]) << " ";
+            }
+        }
+        cout << endl;
+    }
+
+
+
+
+
 
 public:
     enum AddResult {
@@ -95,17 +130,6 @@ public:
         list->clear();
         delete list;
     }
-
-    char** init() const { // Return new ranking
-        char** res = new char*[mList.size()];
-        for (int i = 0; i < mList.size(); ++i) {
-            res[i] = new char[mList.size()];
-
-            for (int j = 0; j < mList.size(); ++j)
-                res[i][j] = static_cast<char>(UNDEFINED);
-        }
-        return res;
-    }
     void destroy(char** ranking) const { // Destroy ranking
         if (ranking == NULL)
             return;
@@ -117,31 +141,54 @@ public:
     }
 
     //
-    bool next(char** ranking, T choice[2], bool selection) { // Update ranking and set next choice if any (return false if none)
-        assert(ranking != NULL);
-        assert(choice != NULL);
+    bool next(char** &ranking, T* &choice, bool selection) { // Update ranking and set next choice if any (return false if none)
 
-        if (ranking[0][mList.size() - 1] != UNDEFINED)
+        // Check start
+        if (ranking == NULL) {
+            ranking = init();
+            
+            assert(choice == NULL);
+            choice = new T[2];
+
+            choice[0] = *mList[0];
+            choice[1] = *mList[1];
+            return true;
+        }
+        if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
             return false; // Done
 
         // Implement choice into ranking
+        assert(choice != NULL);
+
         int idxA = indexOf(choice[0]);
         int idxB = indexOf(choice[1]);
-        ranking[idxA][idxB] = (selection)? MORE:LESS;
-        ranking[idxB][idxA] = (selection)? LESS:MORE;
+        ranking[idxA][idxB] = static_cast<char>((selection)? MORE:LESS);
+        ranking[idxB][idxA] = static_cast<char>((selection)? LESS:MORE);
 
-        if (ranking[0][mList.size() - 1] != UNDEFINED)
+        if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
             return false; // Done
 
-        // Merge ranking (remove unneeded choice)
-        
+        // Fill unnecessary choices (if any)
+        bool dir = (idxA > idxB);
+        int idx = (dir)? idxA:idxB;
+        while ((idxA > 0) && (idxB > 0) && (ranking[idxA][idxB] == ranking[idxA - 1][idxB - 1])) {
+            --idxA;
+            --idxB;
 
+            if (dir) {
+                ranking[idx][idxB] = ranking[idxA][idxB];
+                ranking[idxB][idx] = ranking[idxB][idxA];
+            } else {
+                ranking[idx][idxA] = ranking[idxB][idxA];
+                ranking[idxA][idx] = ranking[idxA][idxB];
+            }
+        }
 
 
 
 
         // Check missing first choices
-        int idx = missing(ranking);
+        idx = missing(ranking);
         if (idx != NO_DATA) {
 
             choice[0] = *mList[idx];
@@ -152,12 +199,29 @@ public:
 
 
 
+        //display(ranking);
+
+
+
+
+
+
+        if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
+            return false; // Done
+
+        // Get next choice
+
+
+
+        return true;
+
+
 
 
     }
     List* sort(char** ranking) const { // Return sorted list according ranking
         assert(ranking != NULL);
-        assert(ranking[0][mList.size() - 1] != UNDEFINED);
+        assert(ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED));
 
         List* res = new List();
         res->resize(mList.size(), NULL);
@@ -169,7 +233,7 @@ public:
                 if (j == i)
                     continue;
 
-                if (ranking[i][j] == MORE)
+                if (ranking[i][j] == static_cast<char>(MORE))
                     ++rank;
             }
             (*res)[mList.size() - 1 - rank] = new T(*mList[i]);
@@ -236,8 +300,8 @@ int main() {
     cout << endl << "Sort stared..." << endl;
 
     // Start sorting
-    int* choice = new int[2];
-    char** ranking = facemash->init();
+    int* choice = NULL;
+    char** ranking = NULL;
     bool selection = false;
 
 #ifndef TEST
