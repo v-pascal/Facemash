@@ -199,6 +199,7 @@ public:
 
 
 
+
         //display(ranking);
 
 
@@ -210,14 +211,16 @@ public:
             return false; // Done
 
         // Get next choice
+        idxA = 0;
+        while (ranking[0][++idxA] != static_cast<char>(UNDEFINED));
+        idxB = 0;
+        while (ranking[idxB + 1][idxA] == static_cast<char>(UNDEFINED))
+            ++idxB;
 
-
+        choice[0] = *mList[idxA];
+        choice[1] = *mList[idxB];
 
         return true;
-
-
-
-
     }
     List* sort(char** ranking) const { // Return sorted list according ranking
         assert(ranking != NULL);
