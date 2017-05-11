@@ -75,7 +75,7 @@ private:
 
 
 
-    /*
+
     void display(char** ranking) {
         cout << endl;
         for (int i = 0; i < mList.size(); ++i) {
@@ -89,7 +89,7 @@ private:
         }
         cout << endl;
     }
-    */
+
 
 
 
@@ -166,29 +166,51 @@ public:
         if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
             return false; // Done
 
-        // Fill unnecessary choices (if any)
+        // Fill unnecessary choices (if any):
+
+        // X 1 ? = 1     X 0 ? ? = 0
+        //   X 1      &    X 0 0
+        //     X             X 0
+        //                     X
         bool dir = (idxA > idxB);
-        int idx = (dir)? idxA:idxB;
+        int keepA = (dir)? idxA:idxB;
+        int keepB = (dir)? idxB:idxA;
         while ((idxA > 0) && (idxB > 0) && (ranking[idxA][idxB] == ranking[idxA - 1][idxB - 1])) {
             --idxA;
             --idxB;
 
             if (dir) {
-                ranking[idx][idxB] = ranking[idxA][idxB];
-                ranking[idxB][idx] = ranking[idxB][idxA];
+                ranking[keepA][idxB] = ranking[idxA][idxB];
+                ranking[idxB][keepA] = ranking[idxB][idxA];
             } else {
-                ranking[idx][idxA] = ranking[idxB][idxA];
-                ranking[idxA][idx] = ranking[idxA][idxB];
+                ranking[keepA][idxA] = ranking[idxB][idxA];
+                ranking[idxA][keepA] = ranking[idxA][idxB];
             }
         }
+        idxA = keepA;
+        idxB = keepB;
+        while ((idxA < (mList.size() - 1)) && (idxB < (mList.size() - 2)) && (ranking[idxA][idxB] == ranking[idxA + 1][idxB + 1])) {
+            ranking[idxA + 1][idxB] = ranking[idxA][idxB];
+            ranking[idxB][idxA + 1] = ranking[idxB][idxA];
 
+            ++idxA;
+        }
 
+        // 0 1 ? = 0     1 0 ? = 1
+        //   1 0      &    0 1
+        //     0             1
+        if ((keepA > 0) && (keepA < (mList.size() - 2)) && (keepB > 2) &&
+            (ranking[keepA][keepB] == ranking[keepA + 1][keepB]) && (ranking[keepA][keepB] == ranking[keepA - 1][keepB - 2]) &&
+            (ranking[keepA][keepB] != ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] != ranking[keepA - 1][keepB - 1])) {
+            ranking[keepA - 1][keepB] = ranking[keepA][keepB];
+            ranking[keepB][keepA - 1] = ranking[keepB][keepA];
+        }
 
-
-
+        if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
+            return false; // Done
 
         // Check missing first choices
-        idx = missing(ranking);
+        int idx = missing(ranking);
         if (idx != NO_DATA) {
 
             choice[0] = *mList[idx];
@@ -200,15 +222,14 @@ public:
 
 
 
-        //display(ranking);
+
+
+        display(ranking);
 
 
 
 
 
-
-        if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
-            return false; // Done
 
         // Get next choice
         idx = 1;
@@ -324,8 +345,8 @@ int main() {
     new_tio.c_lflag &= (~ICANON & ~ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
 
+    char reply;
     while (facemash->next(ranking, choice, selection)) {
-        char reply;
 
         cout << "-> CHOICE: " << numToStr<int>(choice[0]) << " ? " << numToStr<int>(choice[1]) << endl;
         cout << "Replace '?' character by entering '>' or '<' (or 'q' to quit)" << endl;
@@ -339,15 +360,15 @@ int main() {
         cout << "* Your choice was: " << numToStr<int>(choice[0]) << ((selection)? " > ":" < ") << numToStr<int>(choice[1]) << endl;
     }
     tcsetattr(STDIN_FILENO, TCSANOW, &old_tio);
-
-    // Display result
-    Facemash<int>::List* sorted = facemash->sort(ranking);
-    cout << endl << "=> Sorted list result: ";
-    display(*sorted);
-
-    Facemash<int>::destroy(sorted);
     delete [] choice;
 
+    if (reply != 'q') { // Display result
+        Facemash<int>::List* sorted = facemash->sort(ranking);
+        cout << endl << "=> Sorted list result: ";
+        display(*sorted);
+
+        Facemash<int>::destroy(sorted);
+    }
 #else
     assert(facemash->size() < 32); // < Bits count in integer (see mask variable in loop below)
     int count = facemash->size() * facemash->size();
