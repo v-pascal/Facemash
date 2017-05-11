@@ -75,8 +75,7 @@ private:
 
 
 
-
-
+    /*
     void display(char** ranking) {
         cout << endl;
         for (int i = 0; i < mList.size(); ++i) {
@@ -90,8 +89,7 @@ private:
         }
         cout << endl;
     }
-
-
+    */
 
 
 
@@ -187,6 +185,8 @@ public:
 
 
 
+
+
         // Check missing first choices
         idx = missing(ranking);
         if (idx != NO_DATA) {
@@ -211,15 +211,26 @@ public:
             return false; // Done
 
         // Get next choice
+        idx = 1;
+
         idxA = 0;
-        while (ranking[0][++idxA] != static_cast<char>(UNDEFINED));
-        idxB = 0;
-        while (ranking[idxB + 1][idxA] == static_cast<char>(UNDEFINED))
+        idxB = 1;
+        while (ranking[idxA][idxB] != static_cast<char>(UNDEFINED)) {
+            ++idxA;
             ++idxB;
 
-        choice[0] = *mList[idxA];
-        choice[1] = *mList[idxB];
-
+            if (idxB == mList.size()) {
+                idxA = 0;
+                idxB = ++idx;
+            }
+        }
+        if ((choice[0] == *mList[idxA]) || (choice[1] == *mList[idxB])) {
+            choice[1] = *mList[idxA];
+            choice[0] = *mList[idxB];
+        } else {
+            choice[0] = *mList[idxA];
+            choice[1] = *mList[idxB];
+        }
         return true;
     }
     List* sort(char** ranking) const { // Return sorted list according ranking
@@ -249,7 +260,6 @@ public:
 //#define TEST
 
 void display(const Facemash<int>::List& list) {
-    cout << endl << "=> Sorted list result: ";
     for (int i = 0; i < list.size(); ++i)
         cout << (*list[i]) << " ";
 
@@ -332,6 +342,7 @@ int main() {
 
     // Display result
     Facemash<int>::List* sorted = facemash->sort(ranking);
+    cout << endl << "=> Sorted list result: ";
     display(*sorted);
 
     Facemash<int>::destroy(sorted);
@@ -342,77 +353,28 @@ int main() {
     int count = facemash->size() * facemash->size();
 
     for (unsigned int test = 0; test < count; ++test) {
-        if (list != NULL)
-            facemash->destroy(list);
+        if (ranking != NULL)
+            facemash->destroy(ranking);
+        if (choice != NULL)
+            delete [] choice;
 
         choice = NULL;
-        list = NULL;
+        ranking = NULL;
         int mask = 1;
 
         cout << "=> Sorted list result #" << test << ": ";
 
         // Next test
-        while (choice = facemash->next(list, choice, selection)) {
+        while (facemash->next(ranking, choice, selection)) {
             selection = test & mask;
             mask <<= 1;
-
-
-            /*
-            if (list != NULL) {
-                Facemash<int>::Sorted* sorted = facemash->sort(list);
-                if (sorted != NULL)
-                    display(*sorted->at(0));
-            }
-            */
-
-
-
         }
 
         // Display result
-        Facemash<int>::Sorted* sorted = facemash->sort(list);
-        if ((sorted != NULL) && (sorted->size() == 1) && (sorted->at(0)->size() == facemash->size()))
-            display(*sorted->at(0));
-        else {
-            cout << endl << "=> Invalid list result for test #" << test << endl;
-            //Facemash<int>::destroy(sorted);
+        Facemash<int>::List* sorted = facemash->sort(ranking);
+        display(*sorted);
 
-
-
-
-            if (sorted != NULL) {
-                for (int u = 0; u < sorted->size(); ++u)
-                    display(*sorted->at(u));
-            } else
-                cout << "Empty";
-
-
-
-
-            break;
-        }
         Facemash<int>::destroy(sorted);
-
-
-
-
-        /*
-        if (test == 2) {
-            cout << "OLA";
-            Facemash<int>::Sorted* sorted = facemash->sort(list);
-            if (sorted != NULL) {
-                for (int u = 0; u < sorted->size(); ++u)
-                    display(*sorted->at(u));
-            } else
-                cout << "Empty";
-            break;
-        } 
-        */  
-
-
-
-
-
     }
 #endif
     facemash->destroy(ranking);
