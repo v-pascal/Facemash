@@ -158,6 +158,8 @@ public:
         // Implement choice into ranking
         assert(choice != NULL);
 
+        bool starting = (ranking[mList.size() - 2][mList.size() - 1] == static_cast<char>(UNDEFINED));
+
         int idxA = indexOf(choice[0]);
         int idxB = indexOf(choice[1]);
         ranking[idxA][idxB] = static_cast<char>((selection)? MORE:LESS);
@@ -168,42 +170,58 @@ public:
 
         // Fill unnecessary choices (if any):
 
-        // X 1 ? = 1     X 0 ? ? = 0
-        //   X 1      &    X 0 0
-        //     X             X 0
+        // X 1 ? = 1     X 0 0 ? = 0
+        //   X 1*     &    X 0 ? = 0
+        //     X             X 0*
         //                     X
         bool dir = (idxA > idxB);
         int keepA = (dir)? idxA:idxB;
         int keepB = (dir)? idxB:idxA;
-        while ((idxA > 0) && (idxB > 0) && (ranking[idxA][idxB] == ranking[idxA - 1][idxB - 1])) {
-            --idxA;
-            --idxB;
+        if (starting) {
 
-            if (dir) {
-                ranking[keepA][idxB] = ranking[idxA][idxB];
-                ranking[idxB][keepA] = ranking[idxB][idxA];
-            } else {
-                ranking[keepA][idxA] = ranking[idxB][idxA];
-                ranking[idxA][keepA] = ranking[idxA][idxB];
+            while ((idxA > 0) && (idxB > 0) && (ranking[idxA][idxB] == ranking[idxA - 1][idxB - 1])) {
+                --idxA;
+                --idxB;
+
+                if (dir) {
+                    ranking[keepA][idxB] = ranking[idxA][idxB];
+                    ranking[idxB][keepA] = ranking[idxB][idxA];
+                } else {
+                    ranking[keepA][idxA] = ranking[idxB][idxA];
+                    ranking[idxA][keepA] = ranking[idxA][idxB];
+                }
+            }
+            idxA = keepA;
+            idxB = keepB;
+            while ((idxA < (mList.size() - 1)) && (idxB < (mList.size() - 2)) && (ranking[idxA][idxB] == ranking[idxA + 1][idxB + 1])) {
+                ranking[idxA + 1][idxB] = ranking[idxA][idxB];
+                ranking[idxB][idxA + 1] = ranking[idxB][idxA];
+
+                ++idxA;
             }
         }
-        idxA = keepA;
-        idxB = keepB;
-        while ((idxA < (mList.size() - 1)) && (idxB < (mList.size() - 2)) && (ranking[idxA][idxB] == ranking[idxA + 1][idxB + 1])) {
-            ranking[idxA + 1][idxB] = ranking[idxA][idxB];
-            ranking[idxB][idxA + 1] = ranking[idxB][idxA];
 
-            ++idxA;
+        // 0 1*? = 0     1 0*? = 1     1 0*? = 0     0 1*? = 1
+        //   1 0      &    0 1      &    0 0      &    1 1
+        //     0             1             0             1
+        if ((keepA < (mList.size() - 3)) && (keepB > 1) && (keepB < (mList.size() - 2)) &&
+            (ranking[keepA + 1][keepB + 1] != static_cast<char>(UNDEFINED)) && (ranking[keepA][keepB] == ranking[keepA + 1][keepB])) {
+            ++keepA;
+            ++keepB;
         }
 
-        // 0 1 ? = 0     1 0 ? = 1
-        //   1 0      &    0 1
-        //     0             1
-        if ((keepA > 0) && (keepA < (mList.size() - 2)) && (keepB > 2) &&
-            (ranking[keepA][keepB] == ranking[keepA + 1][keepB]) && (ranking[keepA][keepB] == ranking[keepA - 1][keepB - 2]) &&
-            (ranking[keepA][keepB] != ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] != ranking[keepA - 1][keepB - 1])) {
-            ranking[keepA - 1][keepB] = ranking[keepA][keepB];
-            ranking[keepB][keepA - 1] = ranking[keepB][keepA];
+        // 0 1 ? = 0     1 0 ? = 1     1 0 ? = 0     0 1 ? = 1
+        //   1 0*     &    0 1*     &    0 0*     &    1 1*
+        //     0             1             0             1
+        if ((keepA > 0) && (keepA < (mList.size() - 2)) && (keepB > 2) && (ranking[keepA][keepB] == ranking[keepA + 1][keepB])) {
+            if (((ranking[keepA][keepB] == ranking[keepA - 1][keepB - 2]) &&
+                 (ranking[keepA][keepB] != ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] != ranking[keepA - 1][keepB - 1])) ||
+                ((ranking[keepA][keepB] != ranking[keepA - 1][keepB - 2]) &&
+                 (ranking[keepA][keepB] == ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] == ranking[keepA - 1][keepB - 1]))) {
+
+                ranking[keepA - 1][keepB] = ranking[keepA][keepB];
+                ranking[keepB][keepA - 1] = ranking[keepB][keepA];
+            }
         }
 
         if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
