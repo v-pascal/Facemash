@@ -80,13 +80,120 @@ private:
 
         return true;
     }
+    void merge(char** ranking) const { // Fill unnecessary choices (if any)
+        int last = mList.size() - 1;
+
+        for (int i = 1; i < (last - 1); ++i) {
+            for (int a = 0, b = i; b < (last - 1); ++a, ++b) { // Next top left index coordinates
+
+                if (ranking[a][b] == static_cast<char>(UNDEFINED))
+                    continue;
+
+                // 0 1 ? = 0     1 0 ? = 1
+                //   1 0      &    0 1
+                //     0             1
+                if ((ranking[a][b] == ranking[a + 1][b + 2]) &&
+                    (ranking[a][b] == ranking[a + 2][b + 2]) &&
+                    (ranking[a][b] != ranking[a + 0][b + 1]) && (ranking[a + 0][b + 1] != static_cast<char>(UNDEFINED)) &&
+                    (ranking[a][b] != ranking[a + 1][b + 1]) && (ranking[a + 1][b + 1] != static_cast<char>(UNDEFINED)) &&
+                    (ranking[a][b + 2] == static_cast<char>(UNDEFINED))) {
+
+                    ranking[a][b + 2] = ranking[a][b];
+                    ranking[b + 2][a] = ranking[b][a];
+                }
+
+                // 1 0 ? = 0     0 1 ? = 1
+                //   0 0      &    1 1
+                //     0             1
+                if ((ranking[a][b] != ranking[a + 0][b + 1]) && (ranking[a + 0][b + 1] != static_cast<char>(UNDEFINED)) &&
+                    (ranking[a][b] != ranking[a + 1][b + 1]) && (ranking[a + 1][b + 1] != static_cast<char>(UNDEFINED)) &&
+                    (ranking[a][b] != ranking[a + 1][b + 2]) && (ranking[a + 1][b + 2] != static_cast<char>(UNDEFINED)) &&
+                    (ranking[a][b] != ranking[a + 2][b + 2]) && (ranking[a + 2][b + 2] != static_cast<char>(UNDEFINED)) &&
+                    ((ranking[a][b + 2] == static_cast<char>(UNDEFINED)) || (ranking[a][b + 2] == ranking[a][b + 1]))) {
+
+                    int keepB = b;
+                    do {
+                        // 1 0 0 ? ? = 0     0 1 1 ? ? = 1
+                        //   0 0 0 0      &    1 1 1 1
+                        //     0 - -             1 - -
+                        ranking[a][b + 2] = ranking[a][b + 1];
+                        ranking[b + 2][a] = ranking[b + 1][a];
+
+                        if (++b == (last - 1))
+                            break;
+
+                    } while (ranking[a][b] == ranking[a + 1][b + 2]);
+                    b = keepB;
+                }
+
+                // 1 1 ? = 1     0 0 ? = 0
+                //   1 1      &    0 0
+                //     0             1
+                if ((ranking[a][b] == ranking[a + 0][b + 1]) &&
+                    (ranking[a][b] == ranking[a + 1][b + 1]) &&
+                    (ranking[a][b] == ranking[a + 1][b + 2]) &&
+                    (ranking[a][b] != ranking[a + 2][b + 2]) && (ranking[a + 2][b + 2] != static_cast<char>(UNDEFINED)) &&
+                    ((ranking[a][b + 2] == static_cast<char>(UNDEFINED)) || (ranking[a][b + 2] == ranking[a][b]))) {
+
+                    int keepB = b;
+                    do {
+                        // 1 1 1 ? ? = 1     0 0 0 ? ? = 0
+                        //   1 1 1 1      &    0 0 0 0
+                        //     0 - -             1 - -
+                        ranking[a][b + 2] = ranking[a][b];
+                        ranking[b + 2][a] = ranking[b][a];
+
+                        if (++b == (last - 1))
+                            break;
+
+                    } while (ranking[a][b] == ranking[a + 1][b + 2]);
+                    b = keepB;
+                }
+
+                // 0 0 ? = 0
+                //   0 0
+                //     0
+                if ((ranking[a][b] == ranking[a + 0][b + 1]) && (ranking[a][b] == static_cast<char>(LESS)) &&
+                    (ranking[a][b] == ranking[a + 1][b + 1]) &&
+                    (ranking[a][b] == ranking[a + 1][b + 2]) &&
+                    (ranking[a][b] == ranking[a + 2][b + 2]) &&
+                    (ranking[a][b + 2] == static_cast<char>(UNDEFINED))) {
+
+                    ranking[a][b + 2] = ranking[a][b];
+                    ranking[b + 2][a] = ranking[b][a];
+                }                                
+
+                // 1 1 ? = 1     0 0 ? = 0
+                //   0 -      &    1 -
+                //     1             0
+                if ((ranking[a][b] == ranking[a + 0][b + 1]) &&
+                    (ranking[a][b] == ranking[a + 2][b + 2]) &&
+                    (ranking[a][b] != ranking[a + 1][b + 1]) && (ranking[a + 1][b + 1] != static_cast<char>(UNDEFINED)) &&
+                    (ranking[a + 1][b + 2] == static_cast<char>(UNDEFINED)) &&
+                    (ranking[a + 0][b + 2] == static_cast<char>(UNDEFINED))) {
+
+                    ranking[a][b + 2] = ranking[a][b];
+                    ranking[b + 2][a] = ranking[b][a];
+
+                    a = -1;
+                    b = i - 1;
+                }
+            }
+        }
 
 
+
+
+        //display(ranking);
+
+
+
+    }
 
 
 
     /*
-    void display(char** ranking) {
+    void display(char** ranking) const {
         cout << endl;
         for (int i = 0; i < mList.size(); ++i) {
             cout << endl;
@@ -179,16 +286,16 @@ public:
         if (done(ranking))
             return false; // Done
 
-        // Fill unnecessary choices (if any):
+        // Fill unnecessary choices (if any)
 
         // X 1 ? = 1     X 0 0 ? = 0
         //   X 1*     &    X 0 ? = 0
         //     X             X 0*
         //                     X
-        bool dir = (idxA > idxB);
-        int keepA = (dir)? idxA:idxB;
-        int keepB = (dir)? idxB:idxA;
         if (starting) {
+            bool dir = (idxA > idxB);
+            int keepA = (dir)? idxA:idxB;
+            int keepB = (dir)? idxB:idxA;
 
             while ((idxA > 0) && (idxB > 0) && (ranking[idxA][idxB] == ranking[idxA - 1][idxB - 1])) {
                 --idxA;
@@ -210,71 +317,9 @@ public:
 
                 ++idxA;
             }
-        }
-        swap<int>(keepA, keepB);
 
-        // 1 1*? = 1     0 0*? = 0
-        //   0        &    1
-        //     1             0
-        if ((keepA < (mList.size() - 3)) && (keepB > 1) && (keepB < (mList.size() - 1)) &&
-            (ranking[keepA + 1][keepB + 1] == static_cast<char>(UNDEFINED)) &&
-            (ranking[keepA][keepB] == ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] == ranking[keepA + 2][keepB + 1]) &&
-            (ranking[keepA][keepB] != ranking[keepA + 1][keepB])) {
-
-            ranking[keepA][keepB + 1] = ranking[keepA][keepB];
-            ranking[keepB + 1][keepA] = ranking[keepB][keepA];
-
-        }
-
-        // 0 1*? = 0     1 0*? = 1     1 0*? = 0     0 1*? = 1
-        //   1 0      &    0 1      &    0 0      &    1 1
-        //     0             1             0             1
-        if ((keepA < (mList.size() - 3)) && (keepB > 1) && (keepB < (mList.size() - 1)) &&
-            (ranking[keepA + 1][keepB + 1] != static_cast<char>(UNDEFINED))) {
-            ++keepA;
-            ++keepB; // Case below
-        }
-        if ((keepA > 0) && (keepA < (mList.size() - 2)) && (keepB > 2)) {
-            if (ranking[keepA][keepB] == ranking[keepA + 1][keepB]) {
-
-                // 0 1 ? = 0     1 0 ? = 1
-                //   1 0*     &    0 1*
-                //     0             1
-                if (((ranking[keepA][keepB] == ranking[keepA - 1][keepB - 2]) &&
-                     (ranking[keepA][keepB] != ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] != ranking[keepA - 1][keepB - 1])) ||
-
-                    // 1 0 ? = 0     0 1 ? = 1
-                    //   0 0*     &    1 1*
-                    //     0             1
-                    ((ranking[keepA][keepB] != ranking[keepA - 1][keepB - 2]) &&
-                     (ranking[keepA][keepB] == ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] == ranking[keepA - 1][keepB - 1]))) {
-
-                    do {
-                        ranking[keepA - 1][keepB] = ranking[keepA][keepB];
-                        ranking[keepB][keepA - 1] = ranking[keepB][keepA];
-
-                        // 1 0 0 ? ? = 0     0 1 1 ? ? = 1
-                        //   0 0*0 0           1 1*1 1
-                        //     0 0 0      &      1 1 1
-                        //       0 0               1 1
-                        //         0                 1
-                        if (++keepB > (mList.size() - 1))
-                            break;
-
-                    } while (ranking[keepA][keepB] == ranking[keepA][keepB - 1]);
-                }
-            } else {
-
-                // 1 1 ? = 1     0 0 ? = 0
-                //   1 1*     &    0 0*
-                //     0             1
-                if ((ranking[keepA][keepB] == ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] == ranking[keepA - 1][keepB - 2])) {
-
-                    ranking[keepA - 1][keepB] = ranking[keepA][keepB];
-                    ranking[keepB][keepA - 1] = ranking[keepB][keepA];
-                }
-            }
-        }
+        } else
+            merge(ranking);
 
         if (done(ranking))
             return false; // Done
@@ -309,6 +354,12 @@ public:
             choice[0] = *mList[idxA];
             choice[1] = *mList[idxB];
         }
+
+        // X . .         X . . . .
+        //   X . ?         X . ?
+        //     X .    |      X . .
+        //       X .           X .
+        //         X             X
         return true;
     }
     List* sort(char** ranking) const { // Return sorted list according ranking
