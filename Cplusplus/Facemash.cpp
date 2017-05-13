@@ -70,12 +70,22 @@ private:
 
         return NO_DATA;
     }
+    inline bool done(char** ranking) const { // Return done flag (sort completed)
+        for (int i = 1; i < mList.size(); ++i)
+            if (ranking[0][i] == static_cast<char>(UNDEFINED))
+                return false;
+        for (int i = 0; i < (mList.size() - 1); ++i)
+            if (ranking[i][mList.size() - 1] == static_cast<char>(UNDEFINED))
+                return false;
+
+        return true;
+    }
 
 
 
 
 
-
+    /*
     void display(char** ranking) {
         cout << endl;
         for (int i = 0; i < mList.size(); ++i) {
@@ -89,6 +99,7 @@ private:
         }
         cout << endl;
     }
+    */
 
 
 
@@ -152,7 +163,7 @@ public:
             choice[1] = *mList[1];
             return true;
         }
-        if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
+        if (done(ranking))
             return false; // Done
 
         // Implement choice into ranking
@@ -165,7 +176,7 @@ public:
         ranking[idxA][idxB] = static_cast<char>((selection)? MORE:LESS);
         ranking[idxB][idxA] = static_cast<char>((selection)? LESS:MORE);
 
-        if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
+        if (done(ranking))
             return false; // Done
 
         // Fill unnecessary choices (if any):
@@ -200,31 +211,72 @@ public:
                 ++idxA;
             }
         }
+        swap<int>(keepA, keepB);
+
+        // 1 1*? = 1     0 0*? = 0
+        //   0        &    1
+        //     1             0
+        if ((keepA < (mList.size() - 3)) && (keepB > 1) && (keepB < (mList.size() - 1)) &&
+            (ranking[keepA + 1][keepB + 1] == static_cast<char>(UNDEFINED)) &&
+            (ranking[keepA][keepB] == ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] == ranking[keepA + 2][keepB + 1]) &&
+            (ranking[keepA][keepB] != ranking[keepA + 1][keepB])) {
+
+            ranking[keepA][keepB + 1] = ranking[keepA][keepB];
+            ranking[keepB + 1][keepA] = ranking[keepB][keepA];
+
+        }
 
         // 0 1*? = 0     1 0*? = 1     1 0*? = 0     0 1*? = 1
         //   1 0      &    0 1      &    0 0      &    1 1
         //     0             1             0             1
-        if ((keepA < (mList.size() - 3)) && (keepB > 1) && (keepB < (mList.size() - 2)) &&
-            (ranking[keepA + 1][keepB + 1] != static_cast<char>(UNDEFINED)) && (ranking[keepA][keepB] == ranking[keepA + 1][keepB])) {
+        if ((keepA < (mList.size() - 3)) && (keepB > 1) && (keepB < (mList.size() - 1)) &&
+            (ranking[keepA + 1][keepB + 1] != static_cast<char>(UNDEFINED))) {
             ++keepA;
-            ++keepB;
+            ++keepB; // Case below
         }
+        if ((keepA > 0) && (keepA < (mList.size() - 2)) && (keepB > 2)) {
+            if (ranking[keepA][keepB] == ranking[keepA + 1][keepB]) {
 
-        // 0 1 ? = 0     1 0 ? = 1     1 0 ? = 0     0 1 ? = 1
-        //   1 0*     &    0 1*     &    0 0*     &    1 1*
-        //     0             1             0             1
-        if ((keepA > 0) && (keepA < (mList.size() - 2)) && (keepB > 2) && (ranking[keepA][keepB] == ranking[keepA + 1][keepB])) {
-            if (((ranking[keepA][keepB] == ranking[keepA - 1][keepB - 2]) &&
-                 (ranking[keepA][keepB] != ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] != ranking[keepA - 1][keepB - 1])) ||
-                ((ranking[keepA][keepB] != ranking[keepA - 1][keepB - 2]) &&
-                 (ranking[keepA][keepB] == ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] == ranking[keepA - 1][keepB - 1]))) {
+                // 0 1 ? = 0     1 0 ? = 1
+                //   1 0*     &    0 1*
+                //     0             1
+                if (((ranking[keepA][keepB] == ranking[keepA - 1][keepB - 2]) &&
+                     (ranking[keepA][keepB] != ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] != ranking[keepA - 1][keepB - 1])) ||
 
-                ranking[keepA - 1][keepB] = ranking[keepA][keepB];
-                ranking[keepB][keepA - 1] = ranking[keepB][keepA];
+                    // 1 0 ? = 0     0 1 ? = 1
+                    //   0 0*     &    1 1*
+                    //     0             1
+                    ((ranking[keepA][keepB] != ranking[keepA - 1][keepB - 2]) &&
+                     (ranking[keepA][keepB] == ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] == ranking[keepA - 1][keepB - 1]))) {
+
+                    do {
+                        ranking[keepA - 1][keepB] = ranking[keepA][keepB];
+                        ranking[keepB][keepA - 1] = ranking[keepB][keepA];
+
+                        // 1 0 0 ? ? = 0     0 1 1 ? ? = 1
+                        //   0 0*0 0           1 1*1 1
+                        //     0 0 0      &      1 1 1
+                        //       0 0               1 1
+                        //         0                 1
+                        if (++keepB > (mList.size() - 1))
+                            break;
+
+                    } while (ranking[keepA][keepB] == ranking[keepA][keepB - 1]);
+                }
+            } else {
+
+                // 1 1 ? = 1     0 0 ? = 0
+                //   1 1*     &    0 0*
+                //     0             1
+                if ((ranking[keepA][keepB] == ranking[keepA][keepB - 1]) && (ranking[keepA][keepB] == ranking[keepA - 1][keepB - 2])) {
+
+                    ranking[keepA - 1][keepB] = ranking[keepA][keepB];
+                    ranking[keepB][keepA - 1] = ranking[keepB][keepA];
+                }
             }
         }
 
-        if (ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED))
+        if (done(ranking))
             return false; // Done
 
         // Check missing first choices
@@ -235,19 +287,6 @@ public:
             choice[1] = *mList[idx + 1];
             return true;
         }
-
-
-
-
-
-
-
-        display(ranking);
-
-
-
-
-
 
         // Get next choice
         idx = 1;
@@ -274,7 +313,7 @@ public:
     }
     List* sort(char** ranking) const { // Return sorted list according ranking
         assert(ranking != NULL);
-        assert(ranking[0][mList.size() - 1] != static_cast<char>(UNDEFINED));
+        assert(done(ranking));
 
         List* res = new List();
         res->resize(mList.size(), NULL);
